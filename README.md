@@ -114,3 +114,12 @@ early-stage runtime. Before production use, you should add:
 4. **Language/runtime stability**
    - Versioned language spec and compatibility guarantees.
    - Migration tooling, packaging, and release process.
+
+### Built-in runtime safety limits
+
+You can tune runtime limits via environment variables:
+
+- `QBCGI_MAX_REQUEST_BYTES` (default: `1048576`)
+- `QBCGI_MAX_OUTPUT_BYTES` (default: `2097152`)
+- `QBCGI_MAX_LOOP_ITERATIONS` (default: `100000`)
+- `QBCGI_MAX_SQL_ROWS` (default: `10000`)

@@ -4,7 +4,7 @@ import unittest
 from io import BytesIO
 from unittest import mock
 
-from qbcgi import run_script
+from qbcgi import QBError, run_script
 
 
 class _FakeStdin:
@@ -45,6 +45,7 @@ class QBCGIRuntimeTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {'REQUEST_METHOD': 'GET', 'QUERY_STRING': 'name=Sam'}, clear=False):
             out = run_script(src, cgi_mode=True)
         self.assertIn('Content-Type: text/html; charset=utf-8', out)
+        self.assertIn('X-Content-Type-Options: nosniff', out)
         self.assertTrue(out.rstrip().endswith('Hi Sam'))
 
     def test_cgi_post_urlencoded_without_cgi_module(self):
@@ -68,6 +69,16 @@ class QBCGIRuntimeTests(unittest.TestCase):
         ):
             out = run_script(src, cgi_mode=True)
         self.assertTrue(out.rstrip().endswith('Hi Lee'))
+
+    def test_loop_limit_protection(self):
+        src = '\n'.join([
+            'FOR i = 1 TO 1000',
+            '  PRINT STR(i)',
+            'NEXT',
+        ])
+        with self.assertRaisesRegex(QBError, 'Loop iteration limit exceeded'):
+            with mock.patch.dict(os.environ, {'QBCGI_MAX_LOOP_ITERATIONS': '10'}, clear=False):
+                run_script(src)
 
 
 if __name__ == '__main__':

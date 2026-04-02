@@ -27,6 +27,10 @@ class ExecContext:
     output: list[str]
     db: sqlite3.Connection | None
     cgi_params: dict[str, list[str]]
+    max_output_bytes: int
+    max_loop_iterations: int
+    max_sql_rows: int
+    output_bytes: int = 0
 
 
 class DotDict(dict):
@@ -39,7 +43,7 @@ class DotDict(dict):
             raise AttributeError(key) from exc
 
 
-def _parse_cgi_params() -> dict[str, list[str]]:
+def _parse_cgi_params(max_request_bytes: int) -> dict[str, list[str]]:
     def parse_multipart(body: bytes, content_type: str) -> dict[str, list[str]]:
         headers = f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8")
         message = BytesParser(policy=email_policy).parsebytes(headers + body)
@@ -66,6 +70,8 @@ def _parse_cgi_params() -> dict[str, list[str]]:
     if method == "POST":
         ctype = os.environ.get("CONTENT_TYPE", "")
         length = int(os.environ.get("CONTENT_LENGTH", "0") or "0")
+        if length > max_request_bytes:
+            raise QBError(f"Request body too large ({length} bytes)")
         body = sys.stdin.buffer.read(length)
         if ctype.startswith("application/x-www-form-urlencoded"):
             post = parse_qs(body.decode("utf-8", errors="replace"), keep_blank_values=True)
@@ -363,7 +369,11 @@ class Interpreter:
             step = self.eval.eval(step_expr)
             current = start
             compare = (lambda x: x <= end) if step >= 0 else (lambda x: x >= end)
+            iterations = 0
             while compare(current):
+                iterations += 1
+                if iterations > self.ctx.max_loop_iterations:
+                    raise QBError("Loop iteration limit exceeded")
                 self.ctx.vars[name] = current
                 self._exec_block(block.body)
                 current += step
@@ -372,7 +382,11 @@ class Interpreter:
         if block.kind == "foreach":
             name, iterable_expr = block.header
             iterable = self.eval.eval(iterable_expr)
+            iterations = 0
             for item in iterable:
+                iterations += 1
+                if iterations > self.ctx.max_loop_iterations:
+                    raise QBError("Loop iteration limit exceeded")
                 self.ctx.vars[name] = DotDict(item) if isinstance(item, dict) else item
                 self._exec_block(block.body)
             return
@@ -389,7 +403,11 @@ class Interpreter:
 
         if upper.startswith("PRINT "):
             value = self.eval.eval(stmt[6:].strip())
-            self.ctx.output.append(str(value))
+            rendered = str(value)
+            self.ctx.output_bytes += len(rendered.encode("utf-8", errors="replace")) + 1
+            if self.ctx.output_bytes > self.ctx.max_output_bytes:
+                raise QBError("Output limit exceeded")
+            self.ctx.output.append(rendered)
             return
 
         if upper.startswith("HEADER "):
@@ -420,6 +438,8 @@ class Interpreter:
             db_path = str(self.eval.eval(stmt[9:].strip()))
             self.ctx.db = sqlite3.connect(db_path)
             self.ctx.db.row_factory = sqlite3.Row
+            self.ctx.db.execute("PRAGMA foreign_keys = ON")
+            self.ctx.db.execute("PRAGMA busy_timeout = 5000")
             return
 
         if upper.startswith("SQL EXEC "):
@@ -497,18 +517,41 @@ class Interpreter:
             raise QBError("Database not opened. Use SQL OPEN first.")
         query, params = self._parse_sql_parts(payload)
         cur = self.ctx.db.execute(query, params)
-        return [dict(row) for row in cur.fetchall()]
+        rows = cur.fetchmany(self.ctx.max_sql_rows + 1)
+        if len(rows) > self.ctx.max_sql_rows:
+            raise QBError("SQL query row limit exceeded")
+        return [dict(row) for row in rows]
 
 
 def run_script(source: str, *, cgi_mode: bool = False) -> str:
-    params = _parse_cgi_params() if cgi_mode else {}
-    ctx = ExecContext(vars={}, headers=[], output=[], db=None, cgi_params=params)
+    max_request_bytes = int(os.environ.get("QBCGI_MAX_REQUEST_BYTES", "1048576"))
+    max_output_bytes = int(os.environ.get("QBCGI_MAX_OUTPUT_BYTES", "2097152"))
+    max_loop_iterations = int(os.environ.get("QBCGI_MAX_LOOP_ITERATIONS", "100000"))
+    max_sql_rows = int(os.environ.get("QBCGI_MAX_SQL_ROWS", "10000"))
+    params = _parse_cgi_params(max_request_bytes) if cgi_mode else {}
+    ctx = ExecContext(
+        vars={},
+        headers=[],
+        output=[],
+        db=None,
+        cgi_params=params,
+        max_output_bytes=max_output_bytes,
+        max_loop_iterations=max_loop_iterations,
+        max_sql_rows=max_sql_rows,
+    )
     program = Parser(source).parse()
     Interpreter(program, ctx).run()
 
     out = io.StringIO()
     if cgi_mode:
         headers = ctx.headers or [("Content-Type", "text/html; charset=utf-8")]
+        headers.extend(
+            [
+                ("X-Content-Type-Options", "nosniff"),
+                ("X-Frame-Options", "DENY"),
+                ("Referrer-Policy", "no-referrer"),
+            ]
+        )
         for key, value in headers:
             out.write(f"{key}: {value}\r\n")
         out.write("\r\n")
@@ -533,7 +576,11 @@ def main() -> int:
     except QBError as exc:
         if args.cgi:
             sys.stdout.write("Status: 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\n")
-        sys.stdout.write(f"QBCGI error: {exc}\n")
+        debug = os.environ.get("QBCGI_DEBUG_ERRORS", "").lower() in {"1", "true", "yes"}
+        if debug:
+            sys.stdout.write(f"QBCGI error: {exc}\n")
+        else:
+            sys.stdout.write("QBCGI error: Internal execution error\n")
         return 1
 
 
