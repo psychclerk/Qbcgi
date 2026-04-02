@@ -1,0 +1,83 @@
+REM Guestbook demo web app
+SQL OPEN "./guestbook.db"
+SQL EXEC "CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, message TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+SQL QUERY "PRAGMA table_info(messages)" INTO cols
+LET has_email = 0
+FOREACH c IN cols
+  IF c.name = "email" THEN
+    LET has_email = 1
+  ENDIF
+NEXT
+IF has_email = 0 THEN
+  SQL EXEC "ALTER TABLE messages ADD COLUMN email TEXT DEFAULT ''"
+ENDIF
+
+CGI PARAM "name" INTO name DEFAULT ""
+CGI PARAM "email" INTO email DEFAULT ""
+CGI PARAM "message" INTO message DEFAULT ""
+CGI PARAM "action" INTO action DEFAULT ""
+CGI PARAM "delete_id" INTO delete_id DEFAULT "0"
+
+IF action = "delete" AND INT(delete_id) > 0 THEN
+  SQL EXEC "DELETE FROM messages WHERE id = ?", INT(delete_id)
+ENDIF
+
+IF LEN(name) > 0 AND LEN(message) > 0 AND LEN(email) > 0 THEN
+  SQL EXEC "INSERT INTO messages(name, email, message) VALUES (?, ?, ?)", name, email, message
+ENDIF
+
+SQL QUERY "SELECT id, name, email, message, created_at FROM messages ORDER BY id DESC LIMIT 50" INTO rows
+
+PRINT "<!doctype html>"
+PRINT "<html lang='en'><head>"
+PRINT "<meta charset='utf-8'>"
+PRINT "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+PRINT "<title>QBCGI Guestbook</title>"
+PRINT "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>"
+PRINT "</head><body class='bg-light'>"
+PRINT "<div class='container py-4'>"
+PRINT "<div class='row mb-3'><div class='col-12'>"
+PRINT "<div class='p-4 bg-primary text-white rounded-3 shadow-sm'>"
+PRINT "<h1 class='h2 mb-1'>QBCGI Guestbook</h1>"
+PRINT "<p class='mb-0'>A Bootstrap-powered QBasic-style CGI app with SQLite storage.</p>"
+PRINT "</div></div></div>"
+
+PRINT "<div class='row g-3'>"
+PRINT "<div class='col-lg-5'>"
+PRINT "<div class='card shadow-sm'><div class='card-body'>"
+PRINT "<h2 class='h5 card-title'>Leave a message</h2>"
+PRINT "<form method='post' class='row g-2'>"
+PRINT "<div class='col-12'><label class='form-label'>Name</label><input name='name' class='form-control' required></div>"
+PRINT "<div class='col-12'><label class='form-label'>Email</label><input name='email' type='email' class='form-control' required></div>"
+PRINT "<div class='col-12'><label class='form-label'>Message</label><textarea name='message' class='form-control' rows='4' required></textarea></div>"
+PRINT "<div class='col-12'><button type='submit' class='btn btn-primary w-100'>Save Message</button></div>"
+PRINT "</form></div></div>"
+PRINT "<div class='card mt-3 border-0 bg-body-secondary'><div class='card-body'>"
+PRINT "<div class='d-flex justify-content-between'><span>Total messages</span><strong>" + STR(ROWCOUNT(rows)) + "</strong></div>"
+PRINT "</div></div>"
+PRINT "</div>"
+PRINT "<div class='col-lg-7'>"
+PRINT "<div class='card shadow-sm'><div class='card-body'>"
+PRINT "<h2 class='h5 card-title'>Recent messages</h2>"
+PRINT "<div class='table-responsive'><table class='table table-striped align-middle'>"
+PRINT "<thead><tr><th>ID</th><th>User</th><th>Message</th><th>Created</th><th></th></tr></thead><tbody>"
+
+FOR i = 0 TO ROWCOUNT(rows)-1
+  LET r = rows[i]
+  PRINT "<tr>"
+  PRINT "<td>#" + STR(r.id) + "</td>"
+  PRINT "<td><div class='fw-semibold'>" + ESCAPE(r.name) + "</div><div class='text-muted small'>" + ESCAPE(r.email) + "</div></td>"
+  PRINT "<td>" + ESCAPE(r.message) + "</td>"
+  PRINT "<td><span class='badge text-bg-light'>" + ESCAPE(r.created_at) + "</span></td>"
+  PRINT "<td><form method='post' class='m-0'>"
+  PRINT "<input type='hidden' name='action' value='delete'>"
+  PRINT "<input type='hidden' name='delete_id' value='" + STR(r.id) + "'>"
+  PRINT "<button class='btn btn-sm btn-outline-danger'>Delete</button>"
+  PRINT "</form></td>"
+  PRINT "</tr>"
+NEXT
+
+PRINT "</tbody></table></div>"
+PRINT "</div></div>"
+PRINT "</div></div></div>"
+PRINT "</body></html>"
