@@ -92,3 +92,25 @@ SQL QUERY "SELECT id, name FROM t" INTO rows
 - SQLite parameter binding is used (`?`) for safe inserts and queries.
 - HTML escaping via `ESCAPE(...)` helps prevent XSS in rendered output.
 - On script errors, CGI mode returns HTTP 500 with a readable error message.
+
+## Production readiness
+
+Short answer: **not yet at PHP production maturity**.
+
+This project is currently a compact interpreter/demo and should be treated as an
+early-stage runtime. Before production use, you should add:
+
+1. **Security hardening**
+   - Request size limits / rate limiting.
+   - Strong sandboxing and stricter expression/runtime guards.
+   - Structured allow-lists for filesystem/database access.
+2. **Operational robustness**
+   - Connection pooling / worker model (instead of plain CGI process-per-request).
+   - Timeouts, graceful shutdown, and backpressure handling.
+   - Structured logging + request IDs + metrics.
+3. **Quality gates**
+   - Broader automated test coverage (error paths, malformed scripts, load cases).
+   - Static analysis and CI checks.
+4. **Language/runtime stability**
+   - Versioned language spec and compatibility guarantees.
+   - Migration tooling, packaging, and release process.
