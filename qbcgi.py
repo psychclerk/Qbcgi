@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import argparse
 import ast
-import cgi
 import html
 import io
 import os
 import sqlite3
 import sys
+from email.parser import BytesParser
+from email.policy import default as email_policy
 from dataclasses import dataclass
 from typing import Any, Callable
 from urllib.parse import parse_qs
@@ -39,25 +40,41 @@ class DotDict(dict):
 
 
 def _parse_cgi_params() -> dict[str, list[str]]:
+    def parse_multipart(body: bytes, content_type: str) -> dict[str, list[str]]:
+        headers = f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8")
+        message = BytesParser(policy=email_policy).parsebytes(headers + body)
+        fields: dict[str, list[str]] = {}
+        if not message.is_multipart():
+            return fields
+
+        for part in message.iter_parts():
+            disposition = part.get("Content-Disposition", "")
+            if "form-data" not in disposition:
+                continue
+            name = part.get_param("name", header="Content-Disposition")
+            if not name:
+                continue
+            payload = part.get_payload(decode=True) or b""
+            charset = part.get_content_charset() or "utf-8"
+            value = payload.decode(charset, errors="replace")
+            fields.setdefault(name, []).append(value)
+        return fields
+
     method = os.environ.get("REQUEST_METHOD", "GET").upper()
     params = parse_qs(os.environ.get("QUERY_STRING", ""), keep_blank_values=True)
 
     if method == "POST":
         ctype = os.environ.get("CONTENT_TYPE", "")
+        length = int(os.environ.get("CONTENT_LENGTH", "0") or "0")
+        body = sys.stdin.buffer.read(length)
         if ctype.startswith("application/x-www-form-urlencoded"):
-            length = int(os.environ.get("CONTENT_LENGTH", "0") or "0")
-            body = sys.stdin.read(length)
-            post = parse_qs(body, keep_blank_values=True)
+            post = parse_qs(body.decode("utf-8", errors="replace"), keep_blank_values=True)
             for key, values in post.items():
                 params.setdefault(key, []).extend(values)
         elif ctype.startswith("multipart/form-data"):
-            fs = cgi.FieldStorage()
-            for key in fs.keys():
-                value = fs.getvalue(key)
-                if isinstance(value, list):
-                    params[key] = [str(x) for x in value]
-                else:
-                    params[key] = [str(value)]
+            post = parse_multipart(body, ctype)
+            for key, values in post.items():
+                params.setdefault(key, []).extend(values)
 
     return params
 

@@ -1,9 +1,15 @@
 import os
 import tempfile
 import unittest
+from io import BytesIO
 from unittest import mock
 
 from qbcgi import run_script
+
+
+class _FakeStdin:
+    def __init__(self, data: bytes):
+        self.buffer = BytesIO(data)
 
 
 class QBCGIRuntimeTests(unittest.TestCase):
@@ -40,6 +46,28 @@ class QBCGIRuntimeTests(unittest.TestCase):
             out = run_script(src, cgi_mode=True)
         self.assertIn('Content-Type: text/html; charset=utf-8', out)
         self.assertTrue(out.rstrip().endswith('Hi Sam'))
+
+    def test_cgi_post_urlencoded_without_cgi_module(self):
+        src = '\n'.join([
+            'CGI PARAM "name" INTO name DEFAULT "Guest"',
+            'PRINT "Hi " + name',
+        ])
+        body = b'name=Lee'
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': 'application/x-www-form-urlencoded',
+                    'CONTENT_LENGTH': str(len(body)),
+                    'QUERY_STRING': '',
+                },
+                clear=False,
+            ),
+            mock.patch('sys.stdin', _FakeStdin(body)),
+        ):
+            out = run_script(src, cgi_mode=True)
+        self.assertTrue(out.rstrip().endswith('Hi Lee'))
 
 
 if __name__ == '__main__':
