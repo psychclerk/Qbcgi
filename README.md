@@ -14,28 +14,6 @@ It is designed so non-technical users can write simple scripts like:
 python3 qbcgi.py examples/guestbook.qbb --cgi
 ```
 
-## Compile `.qbb` to executable launcher (PHP-like workflow)
-
-You can compile a `.qbb` file into an executable Python launcher:
-
-```bash
-python3 qbbc.py examples/guestbook.qbb build/guestbook_app.py --cgi
-./build/guestbook_app.py
-```
-
-This lets you deploy pre-generated executables and invoke them similarly to script handlers.
-
-## Build `qbcgi.py` itself into an executable runtime
-
-If you want a single executable that interprets `.qbb` files at runtime (like `php file.php`), build it with:
-
-```bash
-python3 build_exe.py --name qbcgi
-./dist/qbcgi examples/guestbook.qbb --cgi
-```
-
-On Windows this will produce `dist\\qbcgi.exe`.
-
 Run the test file:
 
 ```bash
