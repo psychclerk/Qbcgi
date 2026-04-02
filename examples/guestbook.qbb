@@ -1,0 +1,25 @@
+REM Guestbook demo web app
+SQL OPEN "./guestbook.db"
+SQL EXEC "CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, message TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+
+CGI PARAM "name" INTO name DEFAULT ""
+CGI PARAM "message" INTO message DEFAULT ""
+
+IF LEN(name) > 0 AND LEN(message) > 0 THEN
+  SQL EXEC "INSERT INTO messages(name, message) VALUES (?, ?)", name, message
+ENDIF
+
+SQL QUERY "SELECT id, name, message, created_at FROM messages ORDER BY id DESC LIMIT 20" INTO rows
+
+PRINT "<html><body><h1>QBCGI Guestbook</h1>"
+PRINT "<form method='post'>"
+PRINT "Name: <input name='name'><br>"
+PRINT "Message: <input name='message'><br>"
+PRINT "<button type='submit'>Save</button></form><hr>"
+
+FOR i = 0 TO ROWCOUNT(rows)-1
+  LET r = rows[i]
+  PRINT "<p><b>#" + STR(r.id) + " " + ESCAPE(r.name) + "</b> - " + ESCAPE(r.message) + " <small>(" + r.created_at + ")</small></p>"
+NEXT
+
+PRINT "</body></html>"
