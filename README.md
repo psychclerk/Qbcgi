@@ -4,7 +4,7 @@ QBCGI is a **QBasic-like scripting dialect** for building CGI web apps with SQLi
 It is designed so non-technical users can write simple scripts like:
 
 - `LET`, `IF/ELSE/ENDIF`, `FOR/NEXT`
-- `PRINT` for HTML output (Bootstrap-friendly page generation)
+- `PRINT` for HTML output
 - `CGI PARAM` for form/query values
 - `SQL OPEN`, `SQL EXEC`, `SQL QUERY`
 
@@ -13,28 +13,6 @@ It is designed so non-technical users can write simple scripts like:
 ```bash
 python3 qbcgi.py examples/guestbook.qbb --cgi
 ```
-
-## Compile `.qbb` to executable launcher (PHP-like workflow)
-
-You can compile a `.qbb` file into an executable Python launcher:
-
-```bash
-python3 qbbc.py examples/guestbook.qbb build/guestbook_app.py --cgi
-./build/guestbook_app.py
-```
-
-This lets you deploy pre-generated executables and invoke them similarly to script handlers.
-
-## Build `qbcgi.py` itself into an executable runtime
-
-If you want a single executable that interprets `.qbb` files at runtime (like `php file.php`), build it with:
-
-```bash
-python3 build_exe.py --name qbcgi
-./dist/qbcgi examples/guestbook.qbb --cgi
-```
-
-On Windows this will produce `dist\\qbcgi.exe`.
 
 Run the test file:
 
@@ -107,8 +85,7 @@ SQL QUERY "SELECT id, name FROM t" INTO rows
 3. Mark `run_cgi.py` executable.
 4. Configure your server to run it as CGI/FastCGI.
 
-`run_cgi.py` loads `examples/guestbook.qbb` and outputs HTTP headers + HTML.  
-The example includes a Bootstrap-based full interface (form + table + delete actions).
+`run_cgi.py` loads `examples/guestbook.qbb` and outputs HTTP headers + HTML.
 
 ## Notes
 

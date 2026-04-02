@@ -1,5 +1,4 @@
 import os
-import subprocess
 import tempfile
 import unittest
 from io import BytesIO
@@ -80,17 +79,6 @@ class QBCGIRuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(QBError, 'Loop iteration limit exceeded'):
             with mock.patch.dict(os.environ, {'QBCGI_MAX_LOOP_ITERATIONS': '10'}, clear=False):
                 run_script(src)
-
-    def test_qbbc_compiles_and_runs_launcher(self):
-        with tempfile.TemporaryDirectory() as td:
-            src_path = os.path.join(td, 'hello.qbb')
-            out_path = os.path.join(td, 'hello_compiled.py')
-            with open(src_path, 'w', encoding='utf-8') as f:
-                f.write('PRINT \"hello\"\n')
-
-            subprocess.check_call(['python3', 'qbbc.py', src_path, out_path], cwd=os.getcwd())
-            result = subprocess.check_output(['python3', out_path], text=True, cwd=os.getcwd()).strip()
-            self.assertEqual(result, 'hello')
 
 
 if __name__ == '__main__':
