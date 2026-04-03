@@ -162,3 +162,8 @@ You can tune runtime limits via environment variables:
 - `QBCGI_MAX_OUTPUT_BYTES` (default: `2097152`)
 - `QBCGI_MAX_LOOP_ITERATIONS` (default: `100000`)
 - `QBCGI_MAX_SQL_ROWS` (default: `10000`)
+
+### Error description mechanism (for HTTP 500)
+
+- Default (`QBCGI_ERROR_MODE=safe`): returns an HTML error page with a short **Error ID** and no stack trace.
+- Debug (`QBCGI_ERROR_MODE=debug`): returns detailed traceback in the HTML response for diagnostics.

@@ -9,6 +9,8 @@ import io
 import os
 import sqlite3
 import sys
+import traceback
+import uuid
 from email.parser import BytesParser
 from email.policy import default as email_policy
 from dataclasses import dataclass
@@ -682,6 +684,38 @@ def run_script(source: str, *, cgi_mode: bool = False) -> str:
     return out.getvalue()
 
 
+def render_cgi_error_response(exc: Exception) -> str:
+    mode = os.environ.get("QBCGI_ERROR_MODE", "safe").strip().lower()
+    debug = mode in {"debug", "verbose", "dev"}
+    error_id = str(uuid.uuid4())[:8]
+
+    if debug:
+        detail = html.escape("".join(traceback.format_exception(exc)), quote=True)
+        body = (
+            "<html><body>"
+            "<h1>QBCGI Runtime Error</h1>"
+            f"<p><strong>Error ID:</strong> {error_id}</p>"
+            f"<pre>{detail}</pre>"
+            "</body></html>"
+        )
+    else:
+        body = (
+            "<html><body>"
+            "<h1>Application Error</h1>"
+            f"<p>Request failed. Error ID: <code>{error_id}</code></p>"
+            "<p>Set <code>QBCGI_ERROR_MODE=debug</code> for detailed diagnostics.</p>"
+            "</body></html>"
+        )
+
+    return (
+        "Status: 500 Internal Server Error\r\n"
+        "Content-Type: text/html; charset=utf-8\r\n"
+        "Cache-Control: no-store\r\n"
+        "\r\n"
+        f"{body}"
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run QBCGI scripts")
     ap.add_argument("script", help="Path to .qbb script")
@@ -695,12 +729,23 @@ def main() -> int:
         return 0
     except QBError as exc:
         if args.cgi:
-            sys.stdout.write("Status: 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\n")
-        debug = os.environ.get("QBCGI_DEBUG_ERRORS", "").lower() in {"1", "true", "yes"}
-        if debug:
-            sys.stdout.write(f"QBCGI error: {exc}\n")
+            sys.stdout.write(render_cgi_error_response(exc))
         else:
-            sys.stdout.write("QBCGI error: Internal execution error\n")
+            debug = os.environ.get("QBCGI_DEBUG_ERRORS", "").lower() in {"1", "true", "yes"}
+            if debug:
+                sys.stdout.write(f"QBCGI error: {exc}\n")
+            else:
+                sys.stdout.write("QBCGI error: Internal execution error\n")
+        return 1
+    except Exception as exc:
+        if args.cgi:
+            sys.stdout.write(render_cgi_error_response(exc))
+        else:
+            debug = os.environ.get("QBCGI_DEBUG_ERRORS", "").lower() in {"1", "true", "yes"}
+            if debug:
+                sys.stdout.write("".join(traceback.format_exception(exc)))
+            else:
+                sys.stdout.write("QBCGI error: Internal execution error\n")
         return 1
 
 

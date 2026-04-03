@@ -6,7 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from unittest import mock
 
-from qbcgi import QBError, run_script
+from qbcgi import QBError, render_cgi_error_response, run_script
 
 
 class _FakeStdin:
@@ -124,6 +124,19 @@ class QBCGIRuntimeTests(unittest.TestCase):
         ):
             out = run_script(src, cgi_mode=True)
         self.assertIn('Content-Type: text/html; charset=utf-8', out)
+
+    def test_error_response_safe_mode(self):
+        with mock.patch.dict(os.environ, {'QBCGI_ERROR_MODE': 'safe'}, clear=False):
+            out = render_cgi_error_response(QBError('demo'))
+        self.assertIn('Status: 500 Internal Server Error', out)
+        self.assertIn('Application Error', out)
+        self.assertNotIn('QBError: demo', out)
+
+    def test_error_response_debug_mode_contains_trace(self):
+        with mock.patch.dict(os.environ, {'QBCGI_ERROR_MODE': 'debug'}, clear=False):
+            out = render_cgi_error_response(QBError('demo'))
+        self.assertIn('QBCGI Runtime Error', out)
+        self.assertIn('QBError', out)
 
 
 if __name__ == '__main__':
