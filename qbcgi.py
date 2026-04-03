@@ -685,27 +685,15 @@ def run_script(source: str, *, cgi_mode: bool = False) -> str:
 
 
 def render_cgi_error_response(exc: Exception) -> str:
-    mode = os.environ.get("QBCGI_ERROR_MODE", "safe").strip().lower()
-    debug = mode in {"debug", "verbose", "dev"}
     error_id = str(uuid.uuid4())[:8]
-
-    if debug:
-        detail = html.escape("".join(traceback.format_exception(exc)), quote=True)
-        body = (
-            "<html><body>"
-            "<h1>QBCGI Runtime Error</h1>"
-            f"<p><strong>Error ID:</strong> {error_id}</p>"
-            f"<pre>{detail}</pre>"
-            "</body></html>"
-        )
-    else:
-        body = (
-            "<html><body>"
-            "<h1>Application Error</h1>"
-            f"<p>Request failed. Error ID: <code>{error_id}</code></p>"
-            "<p>Set <code>QBCGI_ERROR_MODE=debug</code> for detailed diagnostics.</p>"
-            "</body></html>"
-        )
+    detail = html.escape("".join(traceback.format_exception(exc)), quote=True)
+    body = (
+        "<html><body>"
+        "<h1>QBCGI Runtime Error</h1>"
+        f"<p><strong>Error ID:</strong> {error_id}</p>"
+        f"<pre>{detail}</pre>"
+        "</body></html>"
+    )
 
     return (
         "Status: 500 Internal Server Error\r\n"
@@ -731,21 +719,13 @@ def main() -> int:
         if args.cgi:
             sys.stdout.write(render_cgi_error_response(exc))
         else:
-            debug = os.environ.get("QBCGI_DEBUG_ERRORS", "").lower() in {"1", "true", "yes"}
-            if debug:
-                sys.stdout.write(f"QBCGI error: {exc}\n")
-            else:
-                sys.stdout.write("QBCGI error: Internal execution error\n")
+            sys.stdout.write(f"QBCGI error: {exc}\n")
         return 1
     except Exception as exc:
         if args.cgi:
             sys.stdout.write(render_cgi_error_response(exc))
         else:
-            debug = os.environ.get("QBCGI_DEBUG_ERRORS", "").lower() in {"1", "true", "yes"}
-            if debug:
-                sys.stdout.write("".join(traceback.format_exception(exc)))
-            else:
-                sys.stdout.write("QBCGI error: Internal execution error\n")
+            sys.stdout.write("".join(traceback.format_exception(exc)))
         return 1
 
 

@@ -165,26 +165,5 @@ You can tune runtime limits via environment variables:
 
 ### Error description mechanism (for HTTP 500)
 
-- Default (`QBCGI_ERROR_MODE=safe`): returns an HTML error page with a short **Error ID** and no stack trace.
-- Debug (`QBCGI_ERROR_MODE=debug`): returns detailed traceback in the HTML response for diagnostics.
-
-To enable debug mode:
-
-```bash
-# one command only
-QBCGI_ERROR_MODE=debug python3 qbcgi.py examples/guestbook.qbb --cgi
-
-# or for current shell session
-export QBCGI_ERROR_MODE=debug
-python3 qbcgi.py examples/guestbook.qbb --cgi
-```
-
-For CGI/FastCGI servers, set the environment variable in server config:
-
-```apache
-SetEnv QBCGI_ERROR_MODE debug
-```
-
-```nginx
-fastcgi_param QBCGI_ERROR_MODE debug;
-```
+- QBCGI always returns a detailed HTML diagnostic page on runtime errors.
+- The page includes an **Error ID** and the full traceback for quick debugging.
