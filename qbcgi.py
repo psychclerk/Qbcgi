@@ -6,7 +6,10 @@ import argparse
 import ast
 import html
 import io
+import math
 import os
+import random
+import re
 import sqlite3
 import sys
 import traceback
@@ -104,13 +107,42 @@ class SafeEvaluator:
             "STR": lambda x: str(x),
             "UPPER": lambda x: str(x).upper(),
             "LOWER": lambda x: str(x).lower(),
+            "UCASE": lambda x: str(x).upper(),
+            "LCASE": lambda x: str(x).lower(),
             "ESCAPE": lambda x: html.escape(str(x), quote=True),
+            "LEFT": self.left,
+            "RIGHT": self.right,
+            "MID": self.mid,
+            "TRIM": lambda x: str(x).strip(),
+            "LTRIM": lambda x: str(x).lstrip(),
+            "RTRIM": lambda x: str(x).rstrip(),
+            "REPLACE": lambda s, a, b: str(s).replace(str(a), str(b)),
+            "INSTR": self.instr,
+            "CHR": lambda n: chr(int(n)),
+            "ASC": lambda s: ord(str(s)[0]) if str(s) else 0,
+            "ABS": lambda x: abs(x),
+            "SQR": lambda x: math.sqrt(float(x)),
+            "SIN": lambda x: math.sin(float(x)),
+            "COS": lambda x: math.cos(float(x)),
+            "TAN": lambda x: math.tan(float(x)),
+            "ATN": lambda x: math.atan(float(x)),
+            "LOG": lambda x: math.log(float(x)),
+            "EXP": lambda x: math.exp(float(x)),
+            "ROUND": lambda x, n=0: round(float(x), int(n)),
+            "MIN": lambda *args: min(args),
+            "MAX": lambda *args: max(args),
+            "POW": lambda a, b: math.pow(float(a), float(b)),
+            "FLOOR": lambda x: math.floor(float(x)),
+            "CEIL": lambda x: math.ceil(float(x)),
+            "RND": self.rnd,
+            "PI": lambda: math.pi,
             "ISNUMERIC": self.is_numeric,
             "PARAM": self.param,
             "ROWCOUNT": self.rowcount,
         }
 
     def _normalize_expr(self, expr: str) -> str:
+        expr = re.sub(r"\b([A-Za-z_][A-Za-z0-9_]*)\$\s*\(", r"\1(", expr)
         out: list[str] = []
         word: list[str] = []
         i = 0
@@ -192,6 +224,35 @@ class SafeEvaluator:
             return True
         except (TypeError, ValueError):
             return False
+
+    def left(self, value: Any, count: Any) -> str:
+        return str(value)[: max(0, int(count))]
+
+    def right(self, value: Any, count: Any) -> str:
+        n = max(0, int(count))
+        text = str(value)
+        return text[-n:] if n > 0 else ""
+
+    def mid(self, value: Any, start: Any, length: Any | None = None) -> str:
+        text = str(value)
+        s = max(0, int(start) - 1)  # QB strings are 1-based
+        if length is None:
+            return text[s:]
+        return text[s : s + max(0, int(length))]
+
+    def instr(self, source: Any, needle: Any, start: Any = 1) -> int:
+        text = str(source)
+        part = str(needle)
+        idx = text.find(part, max(0, int(start) - 1))
+        return idx + 1 if idx >= 0 else 0
+
+    def rnd(self, upper: Any | None = None) -> float | int:
+        if upper is None:
+            return random.random()
+        upper_int = int(upper)
+        if upper_int <= 0:
+            return 0
+        return random.randint(1, upper_int)
 
     def eval(self, expr: str) -> Any:
         expr = self._normalize_expr(expr)

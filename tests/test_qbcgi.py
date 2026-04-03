@@ -107,6 +107,18 @@ class QBCGIRuntimeTests(unittest.TestCase):
         ])
         self.assertEqual(run_script(src).strip(), 'zero\nnz\nafter')
 
+    def test_string_and_math_function_set(self):
+        src = '\n'.join([
+            'PRINT LEFT$("ABCDE", 2)',
+            'PRINT RIGHT$("ABCDE", 2)',
+            'PRINT MID$("ABCDE", 2, 3)',
+            'PRINT STR(INSTR("ABCDE", "CD"))',
+            'PRINT STR(ABS(-4))',
+            'PRINT STR(ROUND(3.14159, 2))',
+            'PRINT STR(INT(PI()))',
+        ])
+        self.assertEqual(run_script(src).strip(), 'AB\nDE\nBCD\n3\n4\n3.14\n3')
+
     def test_qbbc_compiles_and_runs_launcher(self):
         with tempfile.TemporaryDirectory() as td:
             src_path = os.path.join(td, 'hello.qbb')

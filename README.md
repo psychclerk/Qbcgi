@@ -111,7 +111,10 @@ SQL QUERY "SELECT id, name FROM t" INTO rows
 ### Available expression functions
 
 - `LEN(x)`, `INT(x)`, `FLOAT(x)`, `STR(x)`
-- `UPPER(x)`, `LOWER(x)`, `ESCAPE(x)`
+- `UPPER(x)`, `LOWER(x)`, `UCASE(x)`, `LCASE(x)`, `ESCAPE(x)`
+- `LEFT(x,n)`, `RIGHT(x,n)`, `MID(x,start[,len])` (also supports QB style `LEFT$`, `RIGHT$`, `MID$`)
+- `TRIM(x)`, `LTRIM(x)`, `RTRIM(x)`, `REPLACE(s,a,b)`, `INSTR(s,part[,start])`, `CHR(n)`, `ASC(s)`
+- `ABS(x)`, `SQR(x)`, `SIN(x)`, `COS(x)`, `TAN(x)`, `ATN(x)`, `LOG(x)`, `EXP(x)`, `ROUND(x[,n])`, `MIN(...)`, `MAX(...)`, `POW(a,b)`, `FLOOR(x)`, `CEIL(x)`, `RND([upper])`, `PI()`
 - `ISNUMERIC(x)`
 - `PARAM(name, default)`
 - `ROWCOUNT(list)`
