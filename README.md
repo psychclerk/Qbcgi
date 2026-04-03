@@ -4,7 +4,7 @@ QBCGI is a **QBasic-like scripting dialect** for building CGI web apps with SQLi
 It is designed so non-technical users can write simple scripts like:
 
 - `LET`, `IF/ELSE/ENDIF`, `FOR/NEXT`
-- `PRINT` for HTML output (Bootstrap-friendly page generation)
+- `PRINT` for HTML output (classless YACCK-friendly page generation)
 - `CGI PARAM` for form/query values
 - `SQL OPEN`, `SQL EXEC`, `SQL QUERY`
 
@@ -124,7 +124,7 @@ SQL QUERY "SELECT id, name FROM t" INTO rows
 4. Configure your server to run it as CGI/FastCGI.
 
 `run_cgi.py` loads `examples/guestbook.qbb` and outputs HTTP headers + HTML.  
-The example includes a Bootstrap-based full interface (form + table + delete actions).
+The example includes a classless YACCK.css interface (form + table + delete actions, no HTML class attributes).
 
 ## Notes
 
