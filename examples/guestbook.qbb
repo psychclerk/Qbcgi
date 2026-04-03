@@ -87,7 +87,7 @@ CGI PARAM "message" INTO message DEFAULT ""
 CGI PARAM "action" INTO action DEFAULT ""
 CGI PARAM "delete_id" INTO delete_id DEFAULT "0"
 
-IF action = "delete" AND INT(delete_id) > 0 THEN
+IF action = "delete" AND ISNUMERIC(delete_id) AND INT(delete_id) > 0 THEN
   SQL EXEC "DELETE FROM messages WHERE id = ?", INT(delete_id)
 ENDIF
 

@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 import unittest
 from io import BytesIO
+from pathlib import Path
 from unittest import mock
 
 from qbcgi import QBError, run_script
@@ -104,6 +105,25 @@ class QBCGIRuntimeTests(unittest.TestCase):
             subprocess.check_call(['python3', 'qbbc.py', src_path, out_path], cwd=os.getcwd())
             result = subprocess.check_output(['python3', out_path], text=True, cwd=os.getcwd()).strip()
             self.assertEqual(result, 'hello')
+
+    def test_guestbook_invalid_delete_id_does_not_crash(self):
+        src = Path('examples/guestbook.qbb').read_text(encoding='utf-8')
+        body = b'action=delete&delete_id=abc'
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': 'application/x-www-form-urlencoded',
+                    'CONTENT_LENGTH': str(len(body)),
+                    'QUERY_STRING': '',
+                },
+                clear=False,
+            ),
+            mock.patch('sys.stdin', _FakeStdin(body)),
+        ):
+            out = run_script(src, cgi_mode=True)
+        self.assertIn('Content-Type: text/html; charset=utf-8', out)
 
 
 if __name__ == '__main__':

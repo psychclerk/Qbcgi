@@ -103,6 +103,7 @@ class SafeEvaluator:
             "UPPER": lambda x: str(x).upper(),
             "LOWER": lambda x: str(x).lower(),
             "ESCAPE": lambda x: html.escape(str(x), quote=True),
+            "ISNUMERIC": self.is_numeric,
             "PARAM": self.param,
             "ROWCOUNT": self.rowcount,
         }
@@ -183,6 +184,13 @@ class SafeEvaluator:
     def rowcount(self, value: Any) -> int:
         return len(value) if hasattr(value, "__len__") else 0
 
+    def is_numeric(self, value: Any) -> bool:
+        try:
+            float(str(value))
+            return True
+        except (TypeError, ValueError):
+            return False
+
     def eval(self, expr: str) -> Any:
         expr = self._normalize_expr(expr)
         try:
@@ -220,11 +228,20 @@ class SafeEvaluator:
                 return not value
             raise QBError("Unsupported unary operator")
         if isinstance(node, ast.BoolOp):
-            values = [self._eval_node(v) for v in node.values]
             if isinstance(node.op, ast.And):
-                return all(values)
+                result = True
+                for value_node in node.values:
+                    result = bool(self._eval_node(value_node))
+                    if not result:
+                        return False
+                return result
             if isinstance(node.op, ast.Or):
-                return any(values)
+                result = False
+                for value_node in node.values:
+                    result = bool(self._eval_node(value_node))
+                    if result:
+                        return True
+                return result
             raise QBError("Unsupported boolean operator")
         if isinstance(node, ast.Compare):
             left = self._eval_node(node.left)

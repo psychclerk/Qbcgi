@@ -112,6 +112,7 @@ SQL QUERY "SELECT id, name FROM t" INTO rows
 
 - `LEN(x)`, `INT(x)`, `FLOAT(x)`, `STR(x)`
 - `UPPER(x)`, `LOWER(x)`, `ESCAPE(x)`
+- `ISNUMERIC(x)`
 - `PARAM(name, default)`
 - `ROWCOUNT(list)`
 
