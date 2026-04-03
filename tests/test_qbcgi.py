@@ -95,6 +95,18 @@ class QBCGIRuntimeTests(unittest.TestCase):
         ])
         self.assertEqual(run_script(src).strip(), '[result=5]')
 
+    def test_single_line_if_then_else_and_exit_sub(self):
+        src = '\n'.join([
+            'SUB T(a)',
+            '  IF a = 0 THEN PRINT "zero" ELSE PRINT "nz"',
+            '  IF a = 0 THEN EXIT SUB',
+            '  PRINT "after"',
+            'ENDSUB',
+            'CALL T(0)',
+            'CALL T(1)',
+        ])
+        self.assertEqual(run_script(src).strip(), 'zero\nnz\nafter')
+
     def test_qbbc_compiles_and_runs_launcher(self):
         with tempfile.TemporaryDirectory() as td:
             src_path = os.path.join(td, 'hello.qbb')

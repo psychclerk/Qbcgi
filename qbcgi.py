@@ -351,6 +351,22 @@ class Parser:
                 body.append(Block("if", (cond,), if_body, else_body))
                 continue
 
+            if upper.startswith("IF ") and " THEN " in upper:
+                idx_then = upper.index(" THEN ")
+                cond = raw[3:idx_then].strip()
+                remainder = raw[idx_then + 6 :].strip()
+                else_body = None
+                idx_else = remainder.upper().find(" ELSE ")
+                if idx_else >= 0:
+                    then_stmt = remainder[:idx_else].strip()
+                    else_stmt = remainder[idx_else + 6 :].strip()
+                    else_body = [else_stmt] if else_stmt else None
+                else:
+                    then_stmt = remainder
+                if_body = [then_stmt] if then_stmt else []
+                body.append(Block("if", (cond,), if_body, else_body))
+                continue
+
             if upper.startswith("FOR ") and " TO " in upper:
                 spec = raw[4:]
                 left, right = spec.split(" TO ", 1)
@@ -531,6 +547,9 @@ class Interpreter:
         if upper.startswith("RETURN "):
             value = self.eval.eval(stmt[7:].strip())
             raise ReturnSignal(value)
+
+        if upper == "EXIT SUB" or upper == "EXIT FUNCTION":
+            raise ReturnSignal(None)
 
         if upper.startswith("HEADER "):
             payload = stmt[7:]
